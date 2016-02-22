@@ -16,6 +16,9 @@ import com.stericson.RootShell.RootShell;
 import com.stericson.RootShell.exceptions.RootDeniedException;
 import com.stericson.RootShell.execution.Command;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -55,13 +58,16 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Intent startService = new Intent(getApplicationContext(),MacSniffer.class);
+                Intent startOtherService = new Intent(getApplicationContext(),FileParser.class);
                 if(!serviceStarted){
                     startService(startService);
+                    startService(startOtherService);
                     serviceStarted = !serviceStarted;
                     btn_toggle.setText("Stop service");
                 }
                 else {
                     stopService(startService);
+                    stopService(startOtherService);
                     serviceStarted = !serviceStarted;
                     btn_toggle.setText("Start service");
                 }
@@ -77,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
                 chooseFile();
                 if(selectedfile != null)
                 {
+                    StringBuilder builder = new StringBuilder();
                     txt_file.setText("");
                     try {
                         FileReader fr=new FileReader(selectedfile);
@@ -85,8 +92,7 @@ public class MainActivity extends AppCompatActivity {
                         try {
                             while((line = br.readLine()) != null)
                             {
-                                txt_file.append(line);
-                                txt_file.append("\n");
+                                builder.append(line);
                             }
                         } catch (IOException e) {
                             e.printStackTrace();
@@ -94,28 +100,18 @@ public class MainActivity extends AppCompatActivity {
                     } catch (FileNotFoundException e) {
                         e.printStackTrace();
                     }
+                    String jsonString = builder.toString();
+
+                    txt_file.setText(formatString(jsonString));
+
                 }
                 handler.postDelayed(readFile,10*1000);
             }
 
             private void chooseFile(){
-                String path = Environment.getExternalStorageDirectory().toString()+"/ACP_files/";
+                String path = Environment.getExternalStorageDirectory().toString()+"/ACP_JSON/mac_addresses.json";
                 File f = new File(path);
-                File[] files = f.listFiles();
-                long lastModified = 0;
-                File toRead = null;
-                for (File inFile : files) {
-                    if (!inFile.isDirectory()) {
-                        if(inFile.lastModified()>lastModified) {
-                            lastModified = inFile.lastModified();
-                            toRead = inFile;
-                        }
-                    }
-                }
-                if(toRead!=null) {
-                    selectedfile = toRead;
-                    Log.d("FILE",selectedfile.getName());
-                }
+                selectedfile = f;
             }
         };
     }
@@ -130,5 +126,37 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         handler.removeCallbacks(readFile);
+    }
+
+    public static String formatString(String text){
+
+        StringBuilder json = new StringBuilder();
+        String indentString = "";
+
+        for (int i = 0; i < text.length(); i++) {
+            char letter = text.charAt(i);
+            switch (letter) {
+                case '{':
+                case '[':
+                    json.append("\n" + indentString + letter + "\n");
+                    indentString = indentString + "\t";
+                    json.append(indentString);
+                    break;
+                case '}':
+                case ']':
+                    indentString = indentString.replaceFirst("\t", "");
+                    json.append("\n" + indentString + letter);
+                    break;
+                case ',':
+                    json.append(letter + "\n" + indentString);
+                    break;
+
+                default:
+                    json.append(letter);
+                    break;
+            }
+        }
+
+        return json.toString();
     }
 }
