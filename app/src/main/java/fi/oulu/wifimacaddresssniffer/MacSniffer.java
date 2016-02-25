@@ -1,11 +1,13 @@
 package fi.oulu.wifimacaddresssniffer;
 
+import android.app.Notification;
 import android.app.Service;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.IBinder;
 import android.provider.DocumentsContract;
+import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 
 import com.stericson.RootShell.RootShell;
@@ -31,6 +33,20 @@ public class MacSniffer extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.d(MainActivity.TAG, "Creating service");
+
+        android.support.v4.app.NotificationCompat.Builder mBuilder =
+                new NotificationCompat.Builder(this)
+                        .setSmallIcon(android.R.drawable.sym_def_app_icon)
+                        .setContentTitle("Wifi Sniffer")
+                        .setContentText("Sniffer Running");
+
+        startForeground(1337, mBuilder.build());
+
         destroying = false;
         SharedPreferences preferences = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
@@ -54,15 +70,15 @@ public class MacSniffer extends Service {
 
             @Override
             public void commandCompleted(int id, int exitcode) {
-                Log.d("COMMAND", "Completed");
+                Log.d(MainActivity.TAG, "Command Completed");
             }
 
             @Override
             public void commandTerminated(int id, String reason) {
-                Log.d("COMMAND", "Terminated");
+                Log.d(MainActivity.TAG, "Command Terminated");
 
                 if(!destroying) {
-                    Log.d("COMMAND", "Restarting command");
+                    Log.d(MainActivity.TAG, "Restarting command");
                     handler.post(checking);
                 }
             }
@@ -71,15 +87,15 @@ public class MacSniffer extends Service {
         checking = new Runnable() {
             @Override
             public void run() {
-                Log.d("SERVICE", "Running");
+                Log.d(MainActivity.TAG, "Service Running");
                 try {
                     if (RootShell.isAccessGiven()) {
-                        Log.d("SERVICE", "Root access given");
+                        Log.d(MainActivity.TAG, "Root access given");
                         // your app has been granted root access
                         if(!command.isExecuting() && !RootShell.getShell(true).isExecuting && !RootShell.getShell(true).isReading) {
                             command.finish();
 
-                            Log.d("SERVICE", "Shell is not excecuting");
+                            Log.d(MainActivity.TAG, "Shell is not excecuting");
                             RootShell.getShell(true).add(command);
                         }
                     }
@@ -94,16 +110,19 @@ public class MacSniffer extends Service {
             }
         };
         handler.post(checking);
+
+        return super.onStartCommand(intent, flags, startId);
     }
 
     @Override
     public IBinder onBind(Intent intent) {
-        // TODO: Return the communication channel to the service.
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
     @Override
     public void onDestroy() {
+        Log.d(MainActivity.TAG,"Destroying service");
+        stopForeground(true);
         SharedPreferences preferences = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean(MainActivity.SERVICE, false);

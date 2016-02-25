@@ -7,6 +7,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.provider.ContactsContract;
+import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -38,6 +39,14 @@ public class FileParser extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+
+        android.support.v4.app.NotificationCompat.Builder mBuilder =
+                new NotificationCompat.Builder(this)
+                        .setSmallIcon(android.R.drawable.sym_def_app_icon)
+                        .setContentTitle("Wifi Sniffer")
+                        .setContentText("File Parser Running");
+
+        startForeground(1336, mBuilder.build());
 
         readFileHandler = new Handler();
         createJSONHandler = new Handler();
@@ -82,7 +91,19 @@ public class FileParser extends Service {
                                 String[] values = allLines.get(i).split(",");
                                 if(values!=null && values.length > 3)
                                 {
-                                    DatabaseHelper.insert(getApplicationContext(),values[0],Integer.valueOf(values[3].trim()),values[2]);
+                                    long result = DatabaseHelper.insert(getApplicationContext(),values[0],Integer.valueOf(values[3].trim()),values[2]);
+                                    if(result==-2)
+                                    {
+                                        Log.d(MainActivity.TAG,"Mac address updated");
+                                    }
+                                    else if(result==-1)
+                                    {
+                                        Log.d(MainActivity.TAG,"Error inserting mac address");
+                                    }
+                                    else
+                                    {
+                                        Log.d(MainActivity.TAG, "New Mac address found");
+                                    }
                                 }
                             }
                         }
@@ -107,7 +128,7 @@ public class FileParser extends Service {
                 }
                 if(toRead!=null) {
                     selectedfile = toRead;
-                    Log.d("FILE", selectedfile.getName());
+                    Log.d(MainActivity.TAG, "Read: " + selectedfile.getName());
                 }
             }
         };
@@ -175,12 +196,12 @@ public class FileParser extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
-        // TODO: Return the communication channel to the service.
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
     @Override
     public void onDestroy() {
+        stopForeground(true);
         readFileHandler.removeCallbacks(readFile);
         createJSONHandler.removeCallbacks(createJSON);
         super.onDestroy();

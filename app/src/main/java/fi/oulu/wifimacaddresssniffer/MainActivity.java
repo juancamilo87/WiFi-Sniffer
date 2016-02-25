@@ -31,6 +31,8 @@ public class MainActivity extends AppCompatActivity {
     public static final String PREFS = "fi.oulu.wifimacaddresssniffer";
     public static final String SERVICE = "serviceRunning";
 
+    public static final String TAG = "Unique_Tag";
+
     private Button btn_toggle;
     private TextView txt_file;
 
